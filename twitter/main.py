@@ -2,7 +2,7 @@ import asyncio
 import random
 import tweepy
 from os import environ
-
+from random import choice
 from db.utils import get_motor_client
 
 consumer_key = environ['CONSUMER_KEY']
@@ -84,10 +84,35 @@ async def get_user_by_screen_name(screen_name):
 
 async def get_tweets_from_user(screen_name):
     user = await get_user_by_screen_name(screen_name)
+    tweets = list()
     for tweet in user['tweets']:
-        print(tweet['text'])
+        if tweet['in_reply_to_status_id'] is None:
+            tweets.append(tweet['text'])
+    return tweets
 
 
-loop = asyncio.get_event_loop()
-task = loop.create_task(get_tweets_from_user('MicroPoesia'))
-loop.run_until_complete(task)
+async def get_random_tweet_from_user(screen_name):
+    tweets = await get_tweets_from_user(screen_name)
+    return choice(tweets)
+
+
+async def get_tweets_from_all():
+    client = get_motor_client()
+    collection = client.get_collection('perrito_poeta', 'cuentas_twitter')
+    tweets = list()
+    async for user in collection.find({}):
+        for tweet in user['tweets']:
+            if tweet['in_reply_to_status_id'] is None:
+                if 'RT' in tweet['text']:
+                    if tweet['retweeted_status']['truncated'] is True:
+                        pass
+                        # retweet = api.get_status(tweet['retweeted_status']['id_str'])._json
+                        # print(retweet['text'])
+                        # print('\n', '*' * 100)
+                    else:
+                        print('\n', '-' * 10)
+                        print(tweet['retweeted_status']['text'])
+
+                else:
+                    print('\n', '*' * 10)
+                    print(tweet['text'])
